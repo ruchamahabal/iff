@@ -61,13 +61,14 @@ class EMandatePayment():
 		# Get all members for e-mandate processing
 		for member_name in frappe.get_all("Member", filters={ "e_mandate": 1, "token_status": "Confirmed" }, as_list=1):
 			member = frappe.get_doc("Member", member_name[0])
+
 			expiry = None
-			if member.membership_expiry_date:
+			last_membership = get_last_membership(member.name)
+			if last_membership:
+				expiry = last_membership["to_date"]
+
+			if not expiry and member.membership_expiry_date:
 				expiry = member.membership_expiry_date
-			else:
-				last_membership = get_last_membership(member.name)
-				if last_membership:
-					expiry = last_membership["to_date"]
 
 			if (
 				member.subscription_end \
