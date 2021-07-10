@@ -11,7 +11,22 @@ def get_client():
 	return controller.client
 
 @frappe.whitelist()
-def create_member(customer_id, plan, pan=None):
+def create_member(customer_id, plan, pan=None, address_dict=None):
+	"""
+	:param customer_id: Razorpay Customer ID
+	:param plan: Razorpay Plan ID
+	:param pan: Member's PAN Number
+	:param address_dict: Member's address details
+		{
+			"address_line1": "",
+			"address_line2: "",
+			"state": "",
+			"city": "",
+			"country": "",
+			"pincode": ""
+		}
+	:return: Member ID of the created member
+	"""
 	client = get_client()
 	customer = frappe._dict(client.customer.fetch(customer_id))
 
@@ -34,7 +49,70 @@ def create_member(customer_id, plan, pan=None):
 	})
 	member.insert(ignore_permissions=True)
 
+	if address_dict:
+		create_address(address_dict, doctype="Member", doc=member)
+
 	return member.name
+
+
+@frappe.whitelist()
+def create_donor(name, email, contact, pan=None, address_dict=None):
+	"""
+	:param name: Razorpay Customer ID
+	:param plan: Razorpay Plan ID
+	:param pan: Member's PAN Number
+	:param address_dict: Member's address details
+		{
+			"address_line1": "",
+			"address_line2: "",
+			"state": "",
+			"city": "",
+			"country": "",
+			"pincode": ""
+		}
+	:return: Donor ID of the created donor
+	"""
+	donor_type = frappe.db.get_single_value("Non Profit Settings", "default_donor_type")
+
+	donor = frappe.get_doc({
+		"doctype": "Donor",
+		"donor_name": name,
+		"donor_type": donor_type,
+		"email": email,
+		"contact": contact,
+		"pan_number": pan
+	}).insert(ignore_permissions=True)
+
+	if address_dict:
+		create_address(address_dict, doctype="Donor", doc=donor)
+
+	return donor.name
+
+
+def create_address(address_dict, doctype, doc):
+	party_name = doc.get('member_name') if doctype == 'Member' else doc.get('donor_name')
+	if isinstance(address_dict, six.string_types):
+		address_dict = json.loads(address_dict)
+
+	address = frappe.get_doc({
+		"doctype": "Address",
+		"address_type": "Billing",
+		"address_title": party_name,
+		"address_line1": address_dict.get("address_line1"),
+		"address_line2": address_dict.get("address_line2"),
+		"city": address_dict.get("city"),
+		"state": address_dict.get("state"),
+		"country": address_dict.get("country"),
+		"pincode": address_dict.get("pincode"),
+		"links": [{
+			"link_doctype": doctype,
+			"link_name": doc.name,
+			"link_title": party_name
+		}]
+	}).insert(ignore_permissions=True)
+
+	return address
+
 
 def verify_signature(data):
 	signature = frappe.request.headers.get("X-Razorpay-Signature")
