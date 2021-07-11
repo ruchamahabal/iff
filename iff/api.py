@@ -42,7 +42,7 @@ def create_member(customer_id, plan, pan=None, address_dict=None):
 		"email_id": customer.email,
 		"contact": customer.contact,
 		"customer_id": customer_id,
-		"subscription_activated": 1,
+		"subscription_status": "Active",
 		"token_status": "Initiated",
 		"subscription_start": today,
 		"subscription_end": add_years(today, 2),
@@ -248,7 +248,7 @@ def invoice_paid():
 		membership.insert(ignore_permissions=True)
 
 		# Update membership values
-		member.subscription_activated = 1
+		member.subscription_status = "Active"
 		member.e_mandate = 1
 		member.razorpay_token = payment.token_id
 		status = token_data.get("recurring_details").get("status")
